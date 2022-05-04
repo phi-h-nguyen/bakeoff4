@@ -12,7 +12,7 @@ KetaiCamera cam;
 KetaiSensor sensor;
 float light = 0; 
 float last_light_value = 0;
-float proxSensorThreshold = 1; //you will need to change this per your device.
+float proxSensorThreshold = 15; //you will need to change this per your device.
 
 private class Target
 {
@@ -20,7 +20,7 @@ private class Target
   int action = 0;
 }
 
-int trialCount = 3; //this will be set higher for the bakeoff
+int trialCount = 10; //this will be set higher for the bakeoff
 int trialIndex = 0;
 ArrayList<Target> targets = new ArrayList<Target>();
 
@@ -37,7 +37,8 @@ float screenMidX = 240;
 float screenMidY = 470;
 float screenMaxX = 480;
 float screenMaxY = 940;
-PImage myImage;
+int camWidth = 10;
+int camHeight = 10;
 
 int selectedQuad = -1;
 
@@ -76,6 +77,10 @@ void setup() {
   
   // Patch the input to an volume analyzer
   analyzer.input(input);
+  
+  cam = new KetaiCamera(this, camWidth, camHeight, 30);
+  // 0: back camera; 1: front camera
+  cam.setCameraID(0);
 }
 
 void draw() {
@@ -92,6 +97,7 @@ void draw() {
     if (index >=  targets.size() && !userDone) {
       userDone = true;
       finishTime = millis();
+      cam.stop();   
     }
     
     if (userDone) {
@@ -123,31 +129,25 @@ void draw() {
     String msg;
     Target t = targets.get(trialIndex);
     fill(0, 200, 0, 50);
+    if (t.action == 0) msg = "Back!";
+    else msg = "Front!";
     if (t.target == 0) {
       rect(0, 0, screenMidX, screenMidY);
-      if (t.action == 0) msg = "Up!";
-      else msg = "Down!";
       fill(0, 0, 0);
       text(msg, screenMidX / 2, screenMidY / 2);
     }
     if (t.target == 1) {
       rect(screenMidX, 0, screenMidX, screenMidY);
-      if (t.action == 0) msg = "Up!";
-      else msg = "Down!";
       fill(0, 0, 0);
       text(msg, screenMidX * 1.5, screenMidY / 2);
     }
     if (t.target == 2) {
       rect(0, screenMidY, screenMidX, screenMidY);
-      if (t.action == 0) msg = "Up!";
-      else msg = "Down!";
       fill(0, 0, 0);
       text(msg, screenMidX / 2, screenMidY * 1.5);
     }
     if (t.target == 3) {
       rect(screenMidX, screenMidY, screenMidX, screenMidY);
-      if (t.action == 0) msg = "Up!";
-      else msg = "Down!";
       fill(0, 0, 0);
       text(msg, screenMidX * 1.5, screenMidY * 1.5);
     }
@@ -166,13 +166,11 @@ void draw() {
     //println(myImage.pixels);
   //}
     //Get the overall volume (between 0 and 1.0)
-    float vol = analyzer.analyze();
     fill(127);
     stroke(0);
     
     //Draw an ellipse with size based on volume
-    ellipse(width / 2, height / 2, 10 + vol * 200, 10 + vol * 200);
-    if (vol >.2) println("vol: ", vol);
+    //ellipse(width / 2, height / 2, 10 + light * 10, 10 + light * 10);
   }
   
   if (selectedQuad == -1) {
@@ -182,16 +180,19 @@ void draw() {
 }
 
 void onAccelerometerEvent(float x, float y, float z) {
+  if (userDone || trialIndex >=  targets.size())
+    return;
+  Target t = targets.get(trialIndex);
+  
+  if (t ==  null)
+    return;
+  
   curX = x;
   curY = y;
   curZ = z;
   if (!started || userDone) {
     return;
   }
-  //println(z-9.8); use this to check z output! (-9.8 to remove gravity, which is 9.8m/s)
-  println("x: ", x, ", y: ", y, ", z: ", z);
-  
-  Target t = targets.get(trialIndex);
   
   if (selectedQuad == -1 && countDownTimerWait < 0) {
     if (curX > 3) {
@@ -203,43 +204,66 @@ void onAccelerometerEvent(float x, float y, float z) {
     } 
   }  
   
-  if (userDone || trialIndex >=  targets.size())
-    return;
-  
-  if (t ==  null)
-    return;
-  
-  if (targets.get(trialIndex).target ==  selectedQuad && abs(z - 9.8) > 5 && countDownTimerWait < 0) {
-    if (((z - 9.8) > 5 && t.action ==  0) || ((z - 9.8)< - 5 && t.action ==  1)) {
-      println("Right target, RIGHT z direction!");
-      trialIndex++; //next trial!
-      selectedQuad = -1;
-    } else {
-      if (trialIndex > 0) trialIndex--; //move back one trial as penalty!
-      selectedQuad = -1;
-      println("Right target, WRONG z direction!");
-    }
-    countDownTimerWait = 30; //wait a lttile before allowing next trial
-  } else if (abs(z - 9.8)>4 && targets.get(trialIndex).target!= selectedQuad && countDownTimerWait<0) { 
-    println("wrong round 1 action!"); 
-    if (trialIndex > 0) trialIndex--; //move back one trial as penalty!
-    selectedQuad = -1;
-    countDownTimerWait = 30; //wait a little before allowing next trial
-  } 
 }
 
 void onLightEvent(float v) {
+  if (userDone || trialIndex >=  targets.size()) return;
+  
   last_light_value = light;
   light = v;
+  Target t = targets.get(trialIndex);
+  print("last value: " + last_light_value);
+  print("cur value: " + light);
   
-  if (last_light_value <=  proxSensorThreshold && light > proxSensorThreshold)
-  {
-    //selectedQuad = (selectedQuad + 1) % 4;
-    //println("light event! New target: " + selectedQuad);
+  //if (last_light_value <= proxSensorThreshold && light > proxSensorThreshold && selectedQuad != -1) {  
+  if (light <= proxSensorThreshold && selectedQuad != -1) {
+    println("CLICKED FRONT");
+    
+    if (t.target == selectedQuad && t.action == 1) {
+      trialIndex ++;
+      println("Corrrect!");
+    } else {
+      if (trialIndex > 0) trialIndex--;
+      println("Wrong!");
+    }
+    
+    selectedQuad = -1;
   }
 }
 
 void mousePressed() {
-  started = true;
-  startTime = millis();
+  if (!userDone) {
+    started = true;
+    
+    if (!cam.isStarted())
+      cam.start();    
+  }
+  if (startTime == 0) startTime = millis();
+}
+
+void onCameraPreviewEvent() {
+  
+  if (countDownTimerWait > 0 || userDone || trialIndex >= targets.size()) return;
+  Target t = targets.get(trialIndex);
+  
+  cam.read();
+  cam.loadPixels();
+  float avgB = 0;
+  for (int i = 0; i < cam.pixels.length; i++) {
+    avgB += brightness(cam.pixels[i]);
+  }
+  avgB /= cam.pixels.length;
+  if (avgB < 40 && selectedQuad != -1) {
+    //println("CLICKED BACK");
+    
+    if (t.target == selectedQuad && t.action == 0) {
+      trialIndex ++;
+      //println("Corrrect!");
+    } else {
+      if (trialIndex > 0) trialIndex--;
+      //println("Wrong!");
+    }
+    selectedQuad = -1;
+    countDownTimerWait = 30;
+  }
 }
