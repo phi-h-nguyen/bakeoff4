@@ -6,7 +6,7 @@ import ketai.camera.*;
 KetaiCamera cam;
 KetaiSensor sensor;
 float light = 0; 
-float proxSensorThreshold = 5; //you will need to change this per your device.
+float proxSensorThreshold = 50; //you will need to change this per your device.
 
 private class Target
 {
@@ -195,6 +195,8 @@ void onLightEvent(float light) {
   if (userDone || trialIndex >= targets.size()) return;
   
   Target t = targets.get(trialIndex);
+
+  println(light);
   
   if (light <= proxSensorThreshold && selectedQuad != -1 && lightCountDownTimerWait < 0) {    
     if (t.target == selectedQuad && t.action == 1) {
