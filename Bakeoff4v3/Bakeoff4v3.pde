@@ -3,11 +3,6 @@ import java.util.Collections;
 import ketai.sensors.*;
 import ketai.camera.*;
 
-import processing.sound.*;
-AudioIn input;
-Amplitude analyzer;
-
-
 KetaiCamera cam;
 KetaiSensor sensor;
 float light = 0; 
@@ -31,29 +26,28 @@ int lightCountDownTimerWait = 0;
 
 float curX = 0;
 float curY = 0;
-float curZ = 0;
 
 float screenMidX = 240;
 float screenMidY = 470;
-float screenMaxX = 480;
-float screenMaxY = 940;
+
 int camWidth = 10;
 int camHeight = 10;
 
 int selectedQuad = -1;
 
-final String file = "test.jpg";
-
 boolean started = false;
 
+int verHeight = 325;
+int horWidth = 125;
+
 void setup() {
-  size(480, 940); //you should change this to be fullscreen per your phones screen
+  size(480, 940);
   frameRate(60);
   
   sensor = new KetaiSensor(this);
   sensor.start();
   
-  textFont(createFont("Arial", 40)); //sets the font to Arial size 20
+  textFont(createFont("Arial", 40));
   textAlign(CENTER);
   
   for (int i = 0; i < trialCount; i++) {
@@ -64,7 +58,7 @@ void setup() {
     println("created target with " + t.target + "," + t.action);
   }
   
-  Collections.shuffle(targets); // randomize the order of the button;
+  Collections.shuffle(targets);
   
   cam = new KetaiCamera(this, camWidth, camHeight, 30);
   // 0: back camera; 1: front camera
@@ -83,7 +77,7 @@ void draw() {
     camCountDownTimerWait--;   
     lightCountDownTimerWait--;  
     
-    if (index >=  targets.size() && !userDone) {
+    if (index >= targets.size() && !userDone) {
       userDone = true;
       finishTime = millis();
       cam.stop();   
@@ -97,64 +91,82 @@ void draw() {
       return;
     }
     
-    fill(0, 0, 0);
-    text("Trial " + (index + 1) + " of " + trialCount, width / 2, 50);
-    
-    line(240, 0, 240, 940);
-    line(0, 470, 480, 470);
-    
-    fill(150, 200, 0, 100);
-    
-    if (trialIndex >=  targets.size()) {
+    if (trialIndex >= targets.size()) {
       fill(0, 0, 0);
       text("User completed " + trialCount + " trials", width / 2, 400);
       text("User took " + nfc((finishTime - startTime) / 1000f / trialCount, 2), width / 2, 450);
       text("seconds per target", width / 2, 490);
       return;
     }
-
-    String msg;
+    
+    fill(0, 0, 0);
+    stroke(5);
+    line(240, verHeight, 240, height - verHeight);
+    line(horWidth, 470, width - horWidth, 470);
     Target t = targets.get(trialIndex);
-    fill(0, 200, 0, 50);
+    
+    // top
+    if (t.target == 0) fill(0, 200, 0, 100);
+    else fill(200, 0, 0, 100);
+    rect(50, 0, width - 100, verHeight);
+    
+    //left
+    if (t.target == 1) fill(0, 200, 0, 100);
+    else fill(200, 0, 0, 100);
+    rect(0, verHeight, horWidth, height - 2 * verHeight);
+    
+    // right
+    if (t.target == 2) fill(0, 200, 0, 100);
+    else fill(200, 0, 0, 100);
+    rect(width - horWidth, verHeight, horWidth, height - 2 * verHeight);
+    
+    // bottom
+    if (t.target == 3) fill(0, 200, 0, 100);
+    else fill(200, 0, 0, 100);
+    rect(50, height - verHeight, width - 100, verHeight);
+    
+    if (t.target == selectedQuad) fill(0, 100, 0, 200);
+    else fill(100, 0, 0, 200);
+    if (selectedQuad == 0) rect(50, 0, width - 100, verHeight);
+    else if (selectedQuad == 1) rect(0, verHeight, horWidth, height - 2 * verHeight);
+    else if (selectedQuad == 2) rect(width - horWidth, verHeight, horWidth, height - 2 * verHeight);
+    else if (selectedQuad == 3) rect(50, height - verHeight, width - 100, verHeight);
+    
+    String msg;
+    fill(0, 0, 0);
+    
     if (t.action == 0) msg = "Back!";
     else msg = "Front!";
-    if (t.target == 0) {
-      rect(0, 0, screenMidX, screenMidY);
-      fill(0, 0, 0);
-      text(msg, screenMidX / 2, screenMidY / 2);
-    }
-    if (t.target == 1) {
-      rect(screenMidX, 0, screenMidX, screenMidY);
-      fill(0, 0, 0);
-      text(msg, screenMidX * 1.5, screenMidY / 2);
-    }
-    if (t.target == 2) {
-      rect(0, screenMidY, screenMidX, screenMidY);
-      fill(0, 0, 0);
-      text(msg, screenMidX / 2, screenMidY * 1.5);
-    }
-    if (t.target == 3) {
-      rect(screenMidX, screenMidY, screenMidX, screenMidY);
-      fill(0, 0, 0);
-      text(msg, screenMidX * 1.5, screenMidY * 1.5);
-    }
     
-    fill(0, 200, 0, 100);
-    if (selectedQuad == 0) rect(0, 0, screenMidX, screenMidY);
-    if (selectedQuad == 1) rect(screenMidX, 0, screenMidX, screenMidY);
-    if (selectedQuad == 2) rect(0, screenMidY, screenMidX, screenMidY);
-    if (selectedQuad == 3) rect(screenMidX, screenMidY, screenMidX, screenMidY);
+    if (t.target == 0) text(msg, screenMidX, verHeight / 2);
+    else if (t.target == 1) text(msg, horWidth / 2, screenMidY);
+    else if (t.target == 2) text(msg, width - horWidth / 2, screenMidY);
+    else if (t.target == 3) text(msg, screenMidX, height - verHeight / 2);
     
+    fill(0, 0, 0);
+    text("Trial " + (index + 1) + " of " + trialCount, width / 2, 50);
   }
   
   if (selectedQuad == -1) {
     fill(180, 0, 0);
-    ellipse(240 - curX * 20, 470 + curY * 40, 50, 50);
+    if (abs(curX) > abs(curY)) {
+      if (started && trialIndex < targets.size()) {
+        Target t = targets.get(trialIndex);
+        if (t.target == 2 || t.target == 1) fill(0, 180, 0);
+      }
+      ellipse(240 - curX * 20, screenMidY, 50, 50);
+    } else {
+      if (started && trialIndex < targets.size()) {
+        Target t = targets.get(trialIndex);
+        if (t.target == 0 || t.target == 3) fill(0, 180, 0);
+      }
+      ellipse(screenMidX, 470 + curY * 40, 50, 50);
+    }
   }
 }
 
 void onAccelerometerEvent(float x, float y, float z) {
-  if (userDone || trialIndex >=  targets.size())
+  if (userDone || trialIndex >= targets.size())
     return;
   
   Target t = targets.get(trialIndex);
@@ -164,36 +176,31 @@ void onAccelerometerEvent(float x, float y, float z) {
   
   curX = x;
   curY = y;
-  curZ = z;
   if (!started || userDone) {
     return;
   }
   
+  float xVal = 240 - curX * 20;
+  float yVal = 470 + curY * 40;
+  
   if (selectedQuad == -1) {
-    if (curX > 3) {
-      if (curY < - 3) selectedQuad = 0;
-      else if (curY > 3) selectedQuad = 2;
-    } else if (curX < - 3) {
-      if (curY < - 3) selectedQuad = 1;
-      else if (curY > 3) selectedQuad = 3;
-    } 
+    if (yVal < verHeight) selectedQuad = 0;
+    if (yVal > height - verHeight) selectedQuad = 3;
+    if (xVal < horWidth) selectedQuad = 1;
+    if (xVal > width - horWidth) selectedQuad = 2;
   }  
 }
 
 void onLightEvent(float light) {
-  if (userDone || trialIndex >=  targets.size()) return;
-    
+  if (userDone || trialIndex >= targets.size()) return;
+  
   Target t = targets.get(trialIndex);
   
-  if (light <= proxSensorThreshold && selectedQuad != -1 && lightCountDownTimerWait < 0) {
-    println("CLICKED FRONT");
-    
+  if (light <= proxSensorThreshold && selectedQuad != -1 && lightCountDownTimerWait < 0) {    
     if (t.target == selectedQuad && t.action == 1) {
       trialIndex ++;
-      println("Corrrect!");
     } else {
       if (trialIndex > 0) trialIndex--;
-      println("Wrong!");
     }
     
     selectedQuad = -1;
@@ -212,7 +219,6 @@ void mousePressed() {
 }
 
 void onCameraPreviewEvent() {
-  
   if (camCountDownTimerWait > 0 || userDone || trialIndex >= targets.size()) return;
   
   Target t = targets.get(trialIndex);
@@ -225,14 +231,11 @@ void onCameraPreviewEvent() {
   }
   avgB /= cam.pixels.length;
   if (avgB < 40 && selectedQuad != -1) {
-    println("CLICKED BACK");
     
     if (t.target == selectedQuad && t.action == 0) {
       trialIndex ++;
-      println("Corrrect!");
     } else {
       if (trialIndex > 0) trialIndex--;
-      println("Wrong!");
     }
     selectedQuad = -1;
     camCountDownTimerWait = 30;
