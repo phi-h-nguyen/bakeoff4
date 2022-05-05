@@ -3,10 +3,6 @@ import java.util.Collections;
 import ketai.sensors.*;
 import ketai.camera.*;
 
-import processing.sound.*;
-AudioIn input;
-Amplitude analyzer;
-
 
 KetaiCamera cam;
 KetaiSensor sensor;
@@ -64,18 +60,7 @@ void setup() {
   }
   
   Collections.shuffle(targets); // randomize the order of the button;
-  
-  // Create an Audio input and grab the 1st channel
-  input = new AudioIn(this, 0);
-  
-  // start the Audio Input
-  input.start();  
-  
-  // create a new Amplitude analyzer
-  analyzer = new Amplitude(this);
-  
-  // Patch the input to an volume analyzer
-  analyzer.input(input);
+
 }
 
 void draw() {
@@ -166,13 +151,6 @@ void draw() {
     //println(myImage.pixels);
   //}
     //Get the overall volume (between 0 and 1.0)
-    float vol = analyzer.analyze();
-    fill(127);
-    stroke(0);
-    
-    //Draw an ellipse with size based on volume
-    ellipse(width / 2, height / 2, 10 + vol * 200, 10 + vol * 200);
-    if (vol >.2) println("vol: ", vol);
   }
   
   if (selectedQuad == -1) {
