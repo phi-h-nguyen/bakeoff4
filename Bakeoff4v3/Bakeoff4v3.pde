@@ -11,8 +11,7 @@ Amplitude analyzer;
 KetaiCamera cam;
 KetaiSensor sensor;
 float light = 0; 
-float last_light_value = 0;
-float proxSensorThreshold = 15; //you will need to change this per your device.
+float proxSensorThreshold = 5; //you will need to change this per your device.
 
 private class Target
 {
@@ -27,7 +26,8 @@ ArrayList<Target> targets = new ArrayList<Target>();
 int startTime = 0; // time starts when the first click is captured
 int finishTime = 0; //records the time of the final click
 boolean userDone = false;
-int countDownTimerWait = 0;
+int camCountDownTimerWait = 0;
+int lightCountDownTimerWait = 0;
 
 float curX = 0;
 float curY = 0;
@@ -66,18 +66,6 @@ void setup() {
   
   Collections.shuffle(targets); // randomize the order of the button;
   
-  // Create an Audio input and grab the 1st channel
-  input = new AudioIn(this, 0);
-  
-  // start the Audio Input
-  input.start();  
-  
-  // create a new Amplitude analyzer
-  analyzer = new Amplitude(this);
-  
-  // Patch the input to an volume analyzer
-  analyzer.input(input);
-  
   cam = new KetaiCamera(this, camWidth, camHeight, 30);
   // 0: back camera; 1: front camera
   cam.setCameraID(0);
@@ -92,7 +80,8 @@ void draw() {
   } else {
     int index = trialIndex;
     
-    countDownTimerWait--;      
+    camCountDownTimerWait--;   
+    lightCountDownTimerWait--;  
     
     if (index >=  targets.size() && !userDone) {
       userDone = true;
@@ -101,6 +90,7 @@ void draw() {
     }
     
     if (userDone) {
+      fill(0, 0, 0);
       text("User completed " + trialCount + " trials", width / 2, 400);
       text("User took " + nfc((finishTime - startTime) / 1000f / trialCount, 2), width / 2, 450);
       text("seconds per target", width / 2, 490);
@@ -115,17 +105,14 @@ void draw() {
     
     fill(150, 200, 0, 100);
     
-    /*
-    if(abs(curX) > 1 && abs(curY) > 1) {
-    if(curX < 0) {
-    if(curY < 0) rect(screenMidX, 0, screenMidX, screenMidY);
-    else rect(screenMidX, screenMidY, screenMidX, screenMidY);
-  } else {
-    if(curY < 0) rect(0, 0, screenMidX, screenMidY);
-    else rect(0, screenMidY, screenMidX, screenMidY);
-  }
-  }
-    */
+    if (trialIndex >=  targets.size()) {
+      fill(0, 0, 0);
+      text("User completed " + trialCount + " trials", width / 2, 400);
+      text("User took " + nfc((finishTime - startTime) / 1000f / trialCount, 2), width / 2, 450);
+      text("seconds per target", width / 2, 490);
+      return;
+    }
+
     String msg;
     Target t = targets.get(trialIndex);
     fill(0, 200, 0, 50);
@@ -158,19 +145,6 @@ void draw() {
     if (selectedQuad == 2) rect(0, screenMidY, screenMidX, screenMidY);
     if (selectedQuad == 3) rect(screenMidX, screenMidY, screenMidX, screenMidY);
     
-    //if (cam.isStarted()) {
-    //image(cam, width / 2, height / 2);                            // 3
-    //cam.savePhoto(file);
-    //myImage = loadImage(file);
-    //myImage.loadPixels();
-    //println(myImage.pixels);
-  //}
-    //Get the overall volume (between 0 and 1.0)
-    fill(127);
-    stroke(0);
-    
-    //Draw an ellipse with size based on volume
-    //ellipse(width / 2, height / 2, 10 + light * 10, 10 + light * 10);
   }
   
   if (selectedQuad == -1) {
@@ -182,6 +156,7 @@ void draw() {
 void onAccelerometerEvent(float x, float y, float z) {
   if (userDone || trialIndex >=  targets.size())
     return;
+  
   Target t = targets.get(trialIndex);
   
   if (t ==  null)
@@ -194,7 +169,7 @@ void onAccelerometerEvent(float x, float y, float z) {
     return;
   }
   
-  if (selectedQuad == -1 && countDownTimerWait < 0) {
+  if (selectedQuad == -1) {
     if (curX > 3) {
       if (curY < - 3) selectedQuad = 0;
       else if (curY > 3) selectedQuad = 2;
@@ -203,20 +178,14 @@ void onAccelerometerEvent(float x, float y, float z) {
       else if (curY > 3) selectedQuad = 3;
     } 
   }  
-  
 }
 
-void onLightEvent(float v) {
+void onLightEvent(float light) {
   if (userDone || trialIndex >=  targets.size()) return;
-  
-  last_light_value = light;
-  light = v;
+    
   Target t = targets.get(trialIndex);
-  print("last value: " + last_light_value);
-  print("cur value: " + light);
   
-  //if (last_light_value <= proxSensorThreshold && light > proxSensorThreshold && selectedQuad != -1) {  
-  if (light <= proxSensorThreshold && selectedQuad != -1) {
+  if (light <= proxSensorThreshold && selectedQuad != -1 && lightCountDownTimerWait < 0) {
     println("CLICKED FRONT");
     
     if (t.target == selectedQuad && t.action == 1) {
@@ -228,6 +197,7 @@ void onLightEvent(float v) {
     }
     
     selectedQuad = -1;
+    lightCountDownTimerWait = 30;
   }
 }
 
@@ -243,7 +213,8 @@ void mousePressed() {
 
 void onCameraPreviewEvent() {
   
-  if (countDownTimerWait > 0 || userDone || trialIndex >= targets.size()) return;
+  if (camCountDownTimerWait > 0 || userDone || trialIndex >= targets.size()) return;
+  
   Target t = targets.get(trialIndex);
   
   cam.read();
@@ -254,16 +225,16 @@ void onCameraPreviewEvent() {
   }
   avgB /= cam.pixels.length;
   if (avgB < 40 && selectedQuad != -1) {
-    //println("CLICKED BACK");
+    println("CLICKED BACK");
     
     if (t.target == selectedQuad && t.action == 0) {
       trialIndex ++;
-      //println("Corrrect!");
+      println("Corrrect!");
     } else {
       if (trialIndex > 0) trialIndex--;
-      //println("Wrong!");
+      println("Wrong!");
     }
     selectedQuad = -1;
-    countDownTimerWait = 30;
+    camCountDownTimerWait = 30;
   }
 }
